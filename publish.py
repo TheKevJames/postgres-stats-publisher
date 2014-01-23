@@ -4,11 +4,7 @@ import psycopg2
 import librato
 import time
 import json
-
-
-with open('config.json') as f:
-    config = json.load(f)
-    librato_client = librato.connect(config["librato"]["user"], config["librato"]["token"])
+import sys
 
 
 def fetch_index_hits(cur):
@@ -90,47 +86,56 @@ def fetch_tables_sizes(cur):
     pass
 
 
-while True:
-    for db in config['databases']:
-        conn = psycopg2.connect(host=db['host'], port=db['port'], database=db['database'], user=db['user'], password=db['password'])
-        cur = conn.cursor()
+if __name__ == '__main__':
+    config_file = 'config.json'
+    if len(sys.argv) > 1:
+        config_file = sys.argv[1]
 
-        source = db["source"] + "." + db["database"]
+    with open(config_file) as f:
+        config = json.load(f)
+        librato_client = librato.connect(config["librato"]["user"], config["librato"]["token"])
 
-        try:
-            index_hits = fetch_index_hits(cur)
-            cache_hits = fetch_cache_gits(cur)
-            states = fetch_backend_states(cur)
-            waiting = fetch_waiting_backends(cur)
-            times = fetch_backend_times(cur)
-            scans = fetch_seq_scans(cur)
-            db_stats = fetch_db_stats(cur, db["database"])
-            index_sizes = fetch_index_sizes(cur)
+    while True:
+        for db in config['databases']:
+            conn = psycopg2.connect(host=db['host'], port=db['port'], database=db['database'], user=db['user'], password=db['password'])
+            cur = conn.cursor()
 
-            # print(repr(states))
-            # print(scans)
-            # print(db_stats)
-            # print(".")
+            source = db["source"] + "." + db["database"]
 
-            q = librato_client.new_queue()
-            q.add('postgres.pg_stat.index_hits', index_hits, source=source)
-            q.add('postgres.pg_stat.cache_hits', cache_hits, source=source)
-            for state, count in states:
-                q.add('postgres.pg_stat.backends_' + state, count, source=source)
-            q.add('postgres.pg_stat.backends_waiting', waiting, source=source)
-            for metric, secs in times:
-                q.add('postgres.pg_stat.' + metric, secs, source=source)
-            for metric, count in scans:
-                q.add('postgres.pg_stat.' + metric, count, type='counter', source=source)
-            for metric, count in db_stats:
-                q.add('postgres.pg_stat.' + metric, count, type='counter', source=source)
+            try:
+                index_hits = fetch_index_hits(cur)
+                cache_hits = fetch_cache_gits(cur)
+                states = fetch_backend_states(cur)
+                waiting = fetch_waiting_backends(cur)
+                times = fetch_backend_times(cur)
+                scans = fetch_seq_scans(cur)
+                db_stats = fetch_db_stats(cur, db["database"])
+                index_sizes = fetch_index_sizes(cur)
+
+                # print(repr(states))
+                # print(scans)
+                # print(db_stats)
+                # print(".")
+
+                q = librato_client.new_queue()
+                q.add('postgres.pg_stat.index_hits', index_hits, source=source)
+                q.add('postgres.pg_stat.cache_hits', cache_hits, source=source)
+                for state, count in states:
+                    q.add('postgres.pg_stat.backends_' + state, count, source=source)
+                q.add('postgres.pg_stat.backends_waiting', waiting, source=source)
+                for metric, secs in times:
+                    q.add('postgres.pg_stat.' + metric, secs, source=source)
+                for metric, count in scans:
+                    q.add('postgres.pg_stat.' + metric, count, type='counter', source=source)
+                for metric, count in db_stats:
+                    q.add('postgres.pg_stat.' + metric, count, type='counter', source=source)
         
-            q.submit()
+                q.submit()
 
-        except Exception, e:
-            print(repr(e))
+            except Exception, e:
+                print(repr(e))
 
-        cur.close()
-        conn.close()
+            cur.close()
+            conn.close()
 
-    time.sleep(config["interval"])
+        time.sleep(config["interval"])
