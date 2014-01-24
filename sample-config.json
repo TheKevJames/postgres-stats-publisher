@@ -1,0 +1,17 @@
+{
+  "databases": [
+    {
+      "source": "the source name for librato",
+      "host": "some host name",
+      "port": 5432,
+      "database": "db name",
+      "user": "root",
+      "password": "some secret"
+    }
+  ],
+  "interval": 0.5,
+  "librato": {
+    "user": "some@email",
+    "token": "acc3ss-t0ken"
+  }
+}
