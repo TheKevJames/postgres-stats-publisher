@@ -85,6 +85,11 @@ def fetch_index_sizes(cur):
 def fetch_tables_sizes(cur):
     pass
 
+def dsn_for_db(db):
+    creds = ("host=%s port=%d dbname=%s user=%s password=%s" %
+        (db['host'], db['port'], db['database'], db['user'], db['password']))
+    return creds + " connect_timeout=2 application_name=postgres-librato"
+
 
 if __name__ == '__main__':
     config_file = 'config.json'
@@ -97,6 +102,12 @@ if __name__ == '__main__':
 
     while True:
         for db in config['databases']:
+            try:
+                conn = psycopg2.connect(dsn_for_db(db))
+            except psycopg2.OperationalError as e:
+                print(repr(e))
+                continue
+
             conn = psycopg2.connect(host=db['host'], port=db['port'], database=db['database'], user=db['user'], password=db['password'])
             cur = conn.cursor()
 
@@ -132,7 +143,7 @@ if __name__ == '__main__':
         
                 q.submit()
 
-            except Exception, e:
+            except Exception as e:
                 print(repr(e))
 
             cur.close()
