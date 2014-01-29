@@ -7,6 +7,8 @@ Publishes statistics from PostgreSQL's pg_stat tables to Librato.
 
 ## Features
 
+Compatible with PostgreSQL 9.1, 9.2, and 9.3.
+
 Exposes the following stats:
 
  - `postgres.pg_stat.backends_active` — gauge
@@ -60,7 +62,7 @@ respawn
 ```
 
 
-## Further Reading
+## Related Work
 
  - [PostgreSQL Docs - The Statistics Collector](http://www.postgresql.org/docs/9.3/static/monitoring-stats.html)
  - [pg_stats_aggregator](https://github.com/lmarburger/pg_stats_aggregator/blob/master/pgstats.rb)

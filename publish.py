@@ -7,18 +7,32 @@ import json
 import sys
 
 
+def fetch_pg_version(cur):
+    cur.execute("SELECT split_part(version(), ' ', 2)")
+    res = cur.fetchall()
+    return tuple(map(int, res[0][0].split(".")))
+
 def fetch_index_hits(cur):
-    cur.execute("SELECT (sum(idx_blks_hit)) / sum(idx_blks_hit + idx_blks_read) AS ratio FROM pg_statio_user_indexes")
+    cur.execute("SELECT (sum(idx_blks_hit)) / (1 + sum(idx_blks_hit + idx_blks_read)) AS ratio FROM pg_statio_user_indexes")
     res = cur.fetchall()
     return float(res[0][0])
 
 def fetch_cache_gits(cur):
-    cur.execute("SELECT sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) AS ratio FROM pg_statio_user_tables")
+    cur.execute("SELECT sum(heap_blks_hit) / (1 + sum(heap_blks_hit) + sum(heap_blks_read)) AS ratio FROM pg_statio_user_tables")
     res = cur.fetchall()
     return float(res[0][0])
 
-def fetch_backend_states(cur):
-    cur.execute("select state, count(*) from pg_stat_activity group by 1")
+def fetch_backend_states(cur, version):
+    if version < (9,2):
+        cur.execute("""select (case
+            when current_query = '<IDLE> in transaction' then 'idle_in_transaction'
+            when current_query = '<IDLE>' then 'idle'
+            when current_query like 'autovacuum:%' then 'autovacuum'
+            else 'active'
+            end), count(*) from pg_stat_activity group by 1
+            """)
+    else:
+        cur.execute("select state, count(*) from pg_stat_activity group by 1")
     res = cur.fetchall()
     states = []
     for state, count in res:
@@ -33,8 +47,12 @@ def fetch_waiting_backends(cur):
     res = cur.fetchall()
     return int(res[0][0])
 
-def fetch_backend_times(cur):
-    cur.execute("select extract ('epoch' from GREATEST(now() - query_start, '0')) as runtime from pg_stat_activity where state != 'idle' and query not like '%pg_stat%' order by 1")
+def fetch_backend_times(cur, version):
+    if version < (9,2):
+        where = "current_query not like '<IDLE>%' and current_query not like '%pg_stat%' and current_query not like 'autovacuum:%'"
+    else:
+        where = "state != 'idle' and query not like '%pg_stat%'"
+    cur.execute("select extract ('epoch' from GREATEST(now() - query_start, '0')) as runtime from pg_stat_activity where %s order by 1" % where)
     res = cur.fetchall()
     times = [row[0] for row in res]
     if times:
@@ -57,7 +75,7 @@ def fetch_seq_scans(cur):
         ("index_scans", str(res[0][1]))
     ]
 
-def fetch_db_stats(cur, db):
+def fetch_db_stats(cur, db, version):
     fields = [
         ("xact_commit", "transactions_committed"),     # Number of transactions in this database that have been committed
         ("xact_rollback", "transactions_rolled_back"), # Number of transactions in this database that have been rolled back
@@ -68,9 +86,12 @@ def fetch_db_stats(cur, db):
         ("tup_inserted", "rows_inserted"),             # Number of rows inserted by queries in this database
         ("tup_updated", "rows_updated"),               # Number of rows updated by queries in this database
         ("tup_deleted", "rows_deleted"),               # Number of rows deleted by queries in this database
-        ("temp_bytes", "temp_file_bytes"),             # Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.
-        ("blk_read_time", "block_read_time"),          # Time spent reading data file blocks by backends in this database, in milliseconds
     ]
+    if version >= (9,2):
+        fields.extend([
+            ("temp_bytes", "temp_file_bytes"),         # Total amount of data written to temporary files by queries in this database. All temporary files are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.
+            ("blk_read_time", "block_read_time"),      # Time spent reading data file blocks by backends in this database, in milliseconds
+        ])
     cur.execute("select %s from pg_stat_database where datname = '%s'" % (", ".join(f for f, _ in fields), db))
     res = cur.fetchall()
     row = res[0]
@@ -113,19 +134,17 @@ if __name__ == '__main__':
             source = db["source"]
 
             try:
+                version = fetch_pg_version(cur)
                 index_hits = fetch_index_hits(cur)
                 cache_hits = fetch_cache_gits(cur)
-                states = fetch_backend_states(cur)
+                states = fetch_backend_states(cur, version)
                 waiting = fetch_waiting_backends(cur)
-                times = fetch_backend_times(cur)
+                times = fetch_backend_times(cur, version)
                 scans = fetch_seq_scans(cur)
-                db_stats = fetch_db_stats(cur, db["database"])
+                db_stats = fetch_db_stats(cur, db["database"], version)
                 index_sizes = fetch_index_sizes(cur)
 
-                # print(repr(states))
-                # print(scans)
-                # print(db_stats)
-                # print(".")
+                # print(".") # TODO: --feedback
 
                 q = librato_client.new_queue()
                 q.add('postgres.pg_stat.index_hits', index_hits, source=source)
