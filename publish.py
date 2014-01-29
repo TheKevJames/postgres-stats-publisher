@@ -110,8 +110,7 @@ if __name__ == '__main__':
 
             conn = psycopg2.connect(host=db['host'], port=db['port'], database=db['database'], user=db['user'], password=db['password'])
             cur = conn.cursor()
-
-            source = db["source"] + "." + db["database"]
+            source = db["source"]
 
             try:
                 index_hits = fetch_index_hits(cur)
