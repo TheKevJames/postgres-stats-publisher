@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import psycopg2
 import librato
@@ -12,6 +13,7 @@ def fetch_pg_version(cur):
     res = cur.fetchall()
     return tuple(map(int, res[0][0].split(".")))
 
+# TODO: Add incremental versions VS these global ones
 def fetch_index_hits(cur):
     cur.execute("SELECT (sum(idx_blks_hit)) / (1 + sum(idx_blks_hit + idx_blks_read)) AS ratio FROM pg_statio_user_indexes")
     res = cur.fetchall()
@@ -100,9 +102,11 @@ def fetch_db_stats(cur, db, version):
         result.append((name, str(long(round(value)))))
     return result
 
+# TODO: Implement
 def fetch_index_sizes(cur):
     pass
 
+# TODO: Implement
 def fetch_tables_sizes(cur):
     pass
 
@@ -111,30 +115,21 @@ def dsn_for_db(db):
         (db['host'], db['port'], db['database'], db['user'], db['password']))
     return creds + " connect_timeout=2 application_name=postgres-librato"
 
-
-if __name__ == '__main__':
-    config_file = 'config.json'
-    if len(sys.argv) > 1:
-        config_file = sys.argv[1]
-
-    with open(config_file) as f:
-        config = json.load(f)
-        librato_client = librato.connect(config["librato"]["user"], config["librato"]["token"])
-
+def publish_forever(config, librato_client):
     while True:
+        q = librato_client.new_queue()
         for db in config['databases']:
             try:
                 conn = psycopg2.connect(dsn_for_db(db))
             except psycopg2.OperationalError as e:
                 print(repr(e))
                 continue
-
-            conn = psycopg2.connect(host=db['host'], port=db['port'], database=db['database'], user=db['user'], password=db['password'])
             cur = conn.cursor()
             source = db["source"]
 
             try:
                 version = fetch_pg_version(cur)
+
                 index_hits = fetch_index_hits(cur)
                 cache_hits = fetch_cache_gits(cur)
                 states = fetch_backend_states(cur, version)
@@ -144,9 +139,8 @@ if __name__ == '__main__':
                 db_stats = fetch_db_stats(cur, db["database"], version)
                 index_sizes = fetch_index_sizes(cur)
 
-                # print(".") # TODO: --feedback
+                print(".", end="") # TODO: Add CLI flag --feedback
 
-                q = librato_client.new_queue()
                 q.add('postgres.pg_stat.index_hits', index_hits, source=source)
                 q.add('postgres.pg_stat.cache_hits', cache_hits, source=source)
                 for state, count in states:
@@ -158,8 +152,6 @@ if __name__ == '__main__':
                     q.add('postgres.pg_stat.' + metric, count, type='counter', source=source)
                 for metric, count in db_stats:
                     q.add('postgres.pg_stat.' + metric, count, type='counter', source=source)
-        
-                q.submit()
 
             except Exception as e:
                 print(repr(e))
@@ -167,4 +159,18 @@ if __name__ == '__main__':
             cur.close()
             conn.close()
 
+        q.submit()
         time.sleep(config["interval"])
+        print()
+
+
+if __name__ == '__main__':
+    config_file = 'config.json'
+    if len(sys.argv) > 1:
+        config_file = sys.argv[1]
+
+    with open(config_file) as f:
+        config = json.load(f)
+        librato_client = librato.connect(config["librato"]["user"], config["librato"]["token"])
+
+    publish_forever(config, librato_client)
