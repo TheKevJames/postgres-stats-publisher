@@ -9,7 +9,7 @@
       "password": "some secret"
     }
   ],
-  "interval": 0.5,
+  "interval": 60.0,
   "librato": {
     "user": "some@email",
     "token": "acc3ss-t0ken"
