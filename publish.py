@@ -1,3 +1,10 @@
+"""The beef of postgres-librato.
+
+Runs in a infinite loop, fetches numbers from PG
+and publishes them to Librato.
+
+See the README for usage.
+"""
 from __future__ import division
 from __future__ import print_function
 
