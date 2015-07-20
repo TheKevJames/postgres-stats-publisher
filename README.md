@@ -12,6 +12,7 @@ Compatible with PostgreSQL v9.1 and greater.
 
 Exposes the following stats:
 
+ - `postgres.pg_stat.backends` — gauge
  - `postgres.pg_stat.backends_active` — gauge
  - `postgres.pg_stat.backends_idle_in_transaction` — gauge
  - `postgres.pg_stat.backends_idle` — gauge

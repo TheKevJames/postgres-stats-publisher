@@ -111,6 +111,8 @@ def fetch_db_stats(cur, db, version):
         ('tup_updated', 'rows_updated'),
         # Number of rows deleted by queries in this database
         ('tup_deleted', 'rows_deleted'),
+        # Number of active backends
+        ('numbackends', 'backends'),
     ]
     if version >= (9, 2):
         fields.extend([
