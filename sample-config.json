@@ -1,17 +1,21 @@
 {
   "databases": [
     {
-      "source": "the source name for librato",
-      "host": "some host name",
+      "source": "source name",
+      "host": "db host name",
       "port": 5432,
       "database": "db name",
-      "user": "root",
-      "password": "some secret"
+      "user": "db username",
+      "password": "db password"
     }
   ],
   "interval": 60.0,
   "librato": {
-    "user": "some@email",
+    "user": "some@email.com",
     "token": "acc3ss-t0ken"
+  },
+  "carbon": {
+    "server": "carbon host ip",
+    "port": 2003
   }
 }

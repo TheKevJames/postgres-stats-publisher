@@ -1,13 +1,14 @@
+# Postgres Stats Publisher
 
+Publishes statistics from PostgreSQL's pg_stat tables.
+Supports Postgres &rarr; Librato and Postgres &rarr; Carbon
 
-# Postgres &rarr; Librato
-
-Publishes statistics from PostgreSQL's pg_stat tables to Librato.
+Originally forked from [postgres-librato](https://github.com/6wunderkinder/postgres-librato), this project's name was changed since it now supports endpoints other than librato. Full credit goes to [Torsten Becker](https://github.com/torsten) for creating the original project.
 
 
 ## Features
 
-Compatible with PostgreSQL 9.1, 9.2, and 9.3.
+Compatible with PostgreSQL v9.1 and greater.
 
 Exposes the following stats:
 
@@ -36,34 +37,30 @@ Exposes the following stats:
  - `postgres.pg_stat.transactions_rolled_back` — counter
 
 
-## Setup (Ubuntu)
+## Setup
 
-1&#x2e; Install all the dependencies (psycopg2, librato-metrics):
+1&#x2e; Install the dependencies:
 
-```bash
-$ sudo apt-get -q -y install python-pip python-psycopg2
-$ sudo pip install -r requirements.txt
-```
+    pip install -r requirements.txt
 
 2&#x2e; Create a config file based on [sample-config.json](sample-config.json).
 
 3&#x2e; Setup a upstart script (or something similar)
 
-```
-start on runlevel [2345]
-stop on runlevel [016]
+    start on runlevel [2345]
+    stop on runlevel [016]
 
-setuid app
-setgid app
+    setuid app
+    setgid app
 
-# TODO: Edit these paths:
-exec python .../publish.py .../config.json
-respawn
-```
+    # TODO: Edit these paths:
+    exec python .../publish.py .../config.json
+    respawn
 
 
 ## Related Work
 
+ - [postgres-librato](https://github.com/6wunderkinder/postgres-librato)
  - [PostgreSQL Docs - The Statistics Collector](http://www.postgresql.org/docs/9.3/static/monitoring-stats.html)
  - [pg_stats_aggregator](https://github.com/lmarburger/pg_stats_aggregator/blob/master/pgstats.rb)
  - [heroku-pg-extras](https://github.com/heroku/heroku-pg-extras/blob/master/lib/heroku/command/pg.rb)
