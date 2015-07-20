@@ -254,9 +254,9 @@ def publish_forever(config, librato_client, carbon_socket):
             sock.connect(carbon_socket)
 
             for record in stats:
-                stat, data, _, _ = record
-                sock.sendall('postgres.pg_stat.%s %s %d\n' %
-                             (stat, data, int(time.time())))
+                stat, data, source, _ = record
+                sock.sendall('postgres.%s.pg_stat.%s %s %d\n' %
+                             (source, stat, data, int(time.time())))
 
             sock.close()
 
