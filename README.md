@@ -19,6 +19,7 @@ Exposes the following stats:
  - `postgres.pg_stat.backends_waiting` — gauge
  - `postgres.pg_stat.block_read_time` — counter
  - `postgres.pg_stat.cache_hits` — gauge
+ - `postgres.pg_stat.db_size` - guage
  - `postgres.pg_stat.disk_blocks_cache_hit` — counter
  - `postgres.pg_stat.disk_blocks_read` — counter
  - `postgres.pg_stat.index_hits` — gauge

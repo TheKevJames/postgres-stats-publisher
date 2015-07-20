@@ -83,6 +83,11 @@ def fetch_cache_hits(cur):
     res = cur.fetchall()
     return float(res[0][0])
 
+def fetch_db_size(cur):
+    cur.execute("SELECT pg_database_size(current_database())")
+    res = cur.fetchall()
+    return int(res[0][0])
+
 def fetch_db_stats(cur, db, version):
     fields = [
         # Number of transactions in this database that have been committed
@@ -189,33 +194,37 @@ def get_stats(config):
         try:
             version = fetch_pg_version(cur)
 
-            index_hits = fetch_index_hits(cur)
-            stats.append(('index_hits', index_hits, source, 'gauge'))
+            backend_states = fetch_backend_states(cur, version)
+            for state, count in backend_states:
+                stats.append(('backends_' + state, count, source, 'gauge'))
+
+            backend_times = fetch_backend_times(cur, version)
+            for metric, secs in backend_times:
+                stats.append((metric, secs, source, 'gauge'))
 
             cache_hits = fetch_cache_hits(cur)
             stats.append(('cache_hits', cache_hits, source, 'gauge'))
 
-            locks = fetch_locks(cur)
-            stats.append(('locks', locks, source, 'gauge'))
-
-            states = fetch_backend_states(cur, version)
-            for state, count in states:
-                stats.append(('backends_' + state, count, source, 'gauge'))
-
-            waiting = fetch_waiting_backends(cur)
-            stats.append(('backends_waiting', waiting, source, 'gauge'))
-
-            times = fetch_backend_times(cur, version)
-            for metric, secs in times:
-                stats.append((metric, secs, source, 'gauge'))
-
-            scans = fetch_seq_scans(cur)
-            for metric, count in scans:
-                stats.append((metric, count, source, 'counter'))
+            db_size = fetch_db_size(cur)
+            stats.append(('db_size', db_size, source, 'gauge'))
 
             db_stats = fetch_db_stats(cur, db["database"], version)
             for metric, count in db_stats:
                 stats.append((metric, count, source, 'counter'))
+
+            index_hits = fetch_index_hits(cur)
+            stats.append(('index_hits', index_hits, source, 'gauge'))
+
+            locks = fetch_locks(cur)
+            stats.append(('locks', locks, source, 'gauge'))
+
+            seq_scans = fetch_seq_scans(cur)
+            for metric, count in seq_scans:
+                stats.append((metric, count, source, 'counter'))
+
+            waiting_backends = fetch_waiting_backends(cur)
+            stats.append(('backends_waiting', waiting_backends, source,
+                          'gauge'))
         except Exception as e:
             print repr(e)
 
