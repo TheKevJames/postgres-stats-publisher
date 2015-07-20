@@ -271,9 +271,12 @@ def main():
     with open(config_file, 'r') as f:
         config = json.load(f)
 
+    librato_client = None
     if 'librato' in config:
         librato_client = librato.connect(config['librato']['user'],
                                          config['librato']['token'])
+
+    carbon_socket = None
     if 'carbon' in config:
         carbon_socket = (config['carbon']['server'], config['carbon']['port'])
 
