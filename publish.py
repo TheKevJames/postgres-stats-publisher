@@ -20,18 +20,6 @@ def fetch_pg_version(cur):
     res = cur.fetchall()
     return tuple(map(int, res[0][0].split('.')))
 
-# TODO: Add incremental versions VS these global ones
-def fetch_index_hits(cur):
-    cur.execute(""" SELECT SUM(idx_blks_hit) / (1 + SUM(idx_blks_hit + idx_blks_read)) AS ratio
-                    FROM pg_statio_user_indexes """)
-    res = cur.fetchall()
-    return float(res[0][0])
-
-def fetch_cache_hits(cur):
-    cur.execute(""" SELECT SUM(heap_blks_hit) / (1 + SUM(heap_blks_hit) + SUM(heap_blks_read)) AS ratio
-                    FROM pg_statio_user_tables """)
-    res = cur.fetchall()
-    return float(res[0][0])
 
 def fetch_backend_states(cur, version):
     if version < (9, 2):
@@ -59,13 +47,6 @@ def fetch_backend_states(cur, version):
             state = 'null'
         state = state.replace(' ', '_')
         yield (state, int(count))
-
-def fetch_waiting_backends(cur):
-    cur.execute(""" SELECT COUNT(*)
-                    FROM pg_stat_activity
-                    WHERE waiting """)
-    res = cur.fetchall()
-    return int(res[0][0])
 
 def fetch_backend_times(cur, version):
     if version < (9, 2):
@@ -96,16 +77,11 @@ def fetch_backend_times(cur, version):
     else:
         return []
 
-def fetch_seq_scans(cur):
-    cur.execute(""" SELECT sum(seq_scan),
-                           sum(idx_scan)
-                    FROM pg_stat_user_tables """)
+def fetch_cache_hits(cur):
+    cur.execute(""" SELECT SUM(heap_blks_hit) / (1 + SUM(heap_blks_hit) + SUM(heap_blks_read)) AS ratio
+                    FROM pg_statio_user_tables """)
     res = cur.fetchall()
-
-    return [
-        ('sequential_scans', str(res[0][0])),
-        ('index_scans', str(res[0][1]))
-    ]
+    return float(res[0][0])
 
 def fetch_db_stats(cur, db, version):
     fields = [
@@ -153,15 +129,49 @@ def fetch_db_stats(cur, db, version):
     for name, value in zip((name for _, name in fields), row):
         yield (name, str(long(round(value))))
 
+def fetch_index_hits(cur):
+    cur.execute(""" SELECT SUM(idx_blks_hit) / (1 + SUM(idx_blks_hit + idx_blks_read)) AS ratio
+                    FROM pg_statio_user_indexes """)
+    res = cur.fetchall()
+    return float(res[0][0])
+
+def fetch_locks(cur):
+    cur.execute(""" SELECT COUNT(*)
+                    FROM pg_catalog.pg_locks
+                    WHERE NOT pg_catalog.pg_locks.GRANTED """)
+    res = cur.fetchall()
+    return int(res[0][0])
+
+def fetch_seq_scans(cur):
+    cur.execute(""" SELECT sum(seq_scan),
+                           sum(idx_scan)
+                    FROM pg_stat_user_tables """)
+    res = cur.fetchall()
+
+    return [
+        ('sequential_scans', str(res[0][0])),
+        ('index_scans', str(res[0][1]))
+    ]
+
+def fetch_waiting_backends(cur):
+    cur.execute(""" SELECT COUNT(*)
+                    FROM pg_stat_activity
+                    WHERE waiting """)
+    res = cur.fetchall()
+    return int(res[0][0])
+
 # TODO: Implement fetch_index_sizes
 # TODO: Implement fetch_tables_sizes
+
 
 def dsn_for_db(db):
     creds = 'host=%s port=%d dbname=%s user=%s password=%s' % \
             (db['host'], db['port'], db['database'], db['user'],
              db['password'])
-    return creds + ' connect_timeout=2' + \
+    return creds + \
+           ' connect_timeout=2' + \
            ' application_name=postgres-stats-publisher'
+
 
 def get_stats(config):
     stats = []
@@ -184,6 +194,9 @@ def get_stats(config):
 
             cache_hits = fetch_cache_hits(cur)
             stats.append(('cache_hits', cache_hits, source, 'gauge'))
+
+            locks = fetch_locks(cur)
+            stats.append(('locks', locks, source, 'gauge'))
 
             states = fetch_backend_states(cur, version)
             for state, count in states:
@@ -237,6 +250,7 @@ def publish_forever(config, librato_client, carbon_socket):
             sock.close()
 
         time.sleep(config["interval"])
+
 
 def main():
     config_file = 'config.json'

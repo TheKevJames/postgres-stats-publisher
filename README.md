@@ -23,6 +23,7 @@ Exposes the following stats:
  - `postgres.pg_stat.disk_blocks_read` — counter
  - `postgres.pg_stat.index_hits` — gauge
  - `postgres.pg_stat.index_scans` — counter
+ - `postgres.pg_stat.locks` - gauge
  - `postgres.pg_stat.max_query_time` — gauge
  - `postgres.pg_stat.mean_query_time` — gauge
  - `postgres.pg_stat.median_query_time` — gauge
