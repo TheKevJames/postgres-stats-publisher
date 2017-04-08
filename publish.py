@@ -8,11 +8,12 @@ See the README for usage.
 from __future__ import division
 
 import json
-import librato
-import psycopg2
 import socket
 import sys
 import time
+
+import librato
+import psycopg2
 
 
 def fetch_pg_version(cur):
@@ -57,7 +58,8 @@ def fetch_backend_times(cur, version):
         where = """ state != 'idle'
                     AND query NOT LIKE '%pg_stat%' """
 
-    cur.execute(""" SELECT EXTRACT(epoch FROM GREATEST(NOW() - query_start, '0')) AS runtime
+    cur.execute(""" SELECT EXTRACT(epoch FROM GREATEST(NOW() - query_start, '0'))
+                               AS runtime
                     FROM pg_stat_activity
                     WHERE %s
                     ORDER BY 1 """ % where)
@@ -78,7 +80,8 @@ def fetch_backend_times(cur, version):
         return []
 
 def fetch_cache_hits(cur):
-    cur.execute(""" SELECT SUM(heap_blks_hit) / (1 + SUM(heap_blks_hit) + SUM(heap_blks_read)) AS ratio
+    cur.execute(""" SELECT SUM(heap_blks_hit) / (1 + SUM(heap_blks_hit) + SUM(heap_blks_read))
+                               AS ratio
                     FROM pg_statio_user_tables """)
     res = cur.fetchall()
     return float(res[0][0])
@@ -137,7 +140,8 @@ def fetch_db_stats(cur, db, version):
         yield (name, str(long(round(value))))
 
 def fetch_index_hits(cur):
-    cur.execute(""" SELECT SUM(idx_blks_hit) / (1 + SUM(idx_blks_hit + idx_blks_read)) AS ratio
+    cur.execute(""" SELECT SUM(idx_blks_hit) / (1 + SUM(idx_blks_hit + idx_blks_read))
+                               AS ratio
                     FROM pg_statio_user_indexes """)
     res = cur.fetchall()
     return float(res[0][0])
@@ -181,6 +185,7 @@ def dsn_for_db(db):
 
 
 def get_stats(config):
+    # pylint: disable=too-many-locals
     stats = []
     for db in config['databases']:
         try:
@@ -227,7 +232,7 @@ def get_stats(config):
             waiting_backends = fetch_waiting_backends(cur)
             stats.append(('backends_waiting', waiting_backends, source,
                           'gauge'))
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             print repr(e)
 
         cur.close()
