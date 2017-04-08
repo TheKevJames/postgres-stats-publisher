@@ -84,7 +84,7 @@ def fetch_cache_hits(cur):
     return float(res[0][0])
 
 def fetch_db_size(cur):
-    cur.execute("SELECT pg_database_size(current_database())")
+    cur.execute('SELECT pg_database_size(current_database())')
     res = cur.fetchall()
     return int(res[0][0])
 
@@ -210,7 +210,7 @@ def get_stats(config):
             db_size = fetch_db_size(cur)
             stats.append(('db_size', db_size, source, 'gauge'))
 
-            db_stats = fetch_db_stats(cur, db["database"], version)
+            db_stats = fetch_db_stats(cur, db['database'], version)
             for metric, count in db_stats:
                 stats.append((metric, count, source, 'counter'))
 
@@ -260,7 +260,7 @@ def publish_forever(config, librato_client, carbon_socket):
 
             sock.close()
 
-        time.sleep(config["interval"])
+        time.sleep(config['interval'])
 
 
 def main():
