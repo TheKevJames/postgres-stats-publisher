@@ -19,7 +19,6 @@ labels:
     color: 84b6eb
     oldname: enhancement
   - name: help wanted
-    color: 159818
   - name: low-priority
     color: fbca04
   - name: task
