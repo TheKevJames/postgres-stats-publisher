@@ -6,6 +6,7 @@ and publishes them to Librato and/or Carbon.
 See the README for usage.
 """
 from __future__ import division
+from __future__ import print_function
 
 import json
 import socket
@@ -191,7 +192,7 @@ def get_stats(config):
         try:
             conn = psycopg2.connect(dsn_for_db(db))
         except psycopg2.OperationalError as e:
-            print repr(e)
+            print(repr(e))
             continue
 
         cur = conn.cursor()
@@ -233,7 +234,7 @@ def get_stats(config):
             stats.append(('backends_waiting', waiting_backends, source,
                           'gauge'))
         except Exception as e:  # pylint: disable=broad-except
-            print repr(e)
+            print(repr(e))
 
         cur.close()
         conn.close()
