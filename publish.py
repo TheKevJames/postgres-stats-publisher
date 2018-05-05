@@ -138,7 +138,10 @@ def fetch_db_stats(cur, db, version):
     row = res[0]
 
     for name, value in zip((name for _, name in fields), row):
-        yield (name, str(long(round(value))))
+        if sys.version_info > (3,):
+            yield (name, str(round(value)))
+        else:
+            yield (name, str(long(round(value))))
 
 def fetch_index_hits(cur):
     cur.execute(""" SELECT SUM(idx_blks_hit) / (1 + SUM(idx_blks_hit + idx_blks_read))
